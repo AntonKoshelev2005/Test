@@ -1,0 +1,237 @@
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Example
+{
+    public partial class Items : Form
+    {
+        public Items()
+        {
+            InitializeComponent();
+
+            LoadData();
+        }
+
+        private void button_Exit_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void Items_Load(object sender, EventArgs e)
+        {
+            this.Width = 586;  // Установить ширину
+            this.Height = 429; // Установить высоту 586; 429
+        }
+        private void LoadData()
+        {
+            // Используем строку подключения из класса Connect
+            string connectionString = Connect.conStr;
+
+            // SQL-запрос для выборки данных
+            string query = "SELECT items_id, price, stock, category, item_name FROM items";
+
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+
+                    MySqlDataAdapter adapter = new MySqlDataAdapter(query, connection);
+                    DataTable table = new DataTable();
+
+                    // Заполняем DataTable данными
+                    adapter.Fill(table);
+
+                    // Привязываем DataTable к существующему dataGridView1
+                    dataGridView1.DataSource = table;
+
+                    // Отключаем возможность добавления строк
+                    dataGridView1.AllowUserToAddRows = false;
+
+
+
+
+                    dataGridView1.AllowUserToResizeColumns = false;
+                    dataGridView1.AllowUserToResizeRows = false;
+
+                    // Скрываем заголовок строк (если не нужен) и запрещаем изменение размеров таблицы
+                    dataGridView1.RowHeadersVisible = false;
+                    dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing;
+                    dataGridView1.ScrollBars = ScrollBars.Both;
+                    dataGridView1.MultiSelect = false;
+                    dataGridView1.ReadOnly = true;
+
+
+                    // Задаем пользовательские заголовки
+                    dataGridView1.Columns["items_id"].HeaderText = "Номер";
+                    dataGridView1.Columns["price"].HeaderText = "Цена";
+                    dataGridView1.Columns["stock"].HeaderText = "Количество";
+                    dataGridView1.Columns["category"].HeaderText = "Категория";
+                    dataGridView1.Columns["Item_name"].HeaderText = "Товар";
+                    dataGridView1.Columns["items_id"].Visible = false;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        DataGridView dgv;
+        private void dataGridView1_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                if (e.RowIndex < 0) return; // Проверяем, что клик был по строке, а не по заголовку
+                try
+                {
+                    dgv = (DataGridView)sender;
+                    int rowIndex = e.RowIndex;
+                    dgv.Rows[rowIndex].Selected = true;
+
+                    string cell0 = dgv.Rows[rowIndex].Cells["items_id"].Value.ToString();
+                    string strCmd = $@"DELETE FROM items WHERE items_id = '{cell0}';";
+                    string strCon = Connect.conStr;
+
+                    using (MySqlConnection con = new MySqlConnection(strCon))
+                    {
+                        con.Open();
+                        MySqlCommand cmd = new MySqlCommand(strCmd, con);
+
+                        DialogResult dr = MessageBox.Show("Удалить запись?", "Внимание!", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                        if (dr == DialogResult.Yes)
+                        {
+                            int res = cmd.ExecuteNonQuery();
+                            MessageBox.Show("Удалено " + res.ToString() + " запись(ей)", "Внимание!", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+
+                            LoadData();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+            // Ограничиваем ввод только буквами
+            textBoxItem.Text = Regex.Replace(textBoxItem.Text, @"[^а-яА-Яa-zA-Z\s]", "");
+            textBoxItem.SelectionStart = textBoxItem.Text.Length; // Устанавливаем курсор в конец
+        }
+
+        private void textBoxCategory_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBoxPrice_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBoxStock_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void buttonApplyEdit_Click(object sender, EventArgs e)
+        {
+            // Проверяем, что выбрана строка в DataGridView
+            if (dataGridView1.SelectedRows.Count == 0)
+            {
+                MessageBox.Show("Выберите запись для редактирования.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Получаем данные из выбранной строки
+            DataGridViewRow selectedRow = dataGridView1.SelectedRows[0];
+            string id = selectedRow.Cells["items_id"].Value.ToString(); // ID записи
+            string itemName = textBoxItem.Text;
+            string price = textBoxPrice.Text;
+            string stock = textBoxStock.Text;
+            string category = textBoxCategory.Text;
+
+            // Проверка корректности ввода (например, цена и количество должны быть числами)
+            if (!decimal.TryParse(price, out _) || !int.TryParse(stock, out _))
+            {
+                MessageBox.Show("Проверьте корректность данных.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            string connectionString = Connect.conStr;
+            string updateQuery = $@"
+        UPDATE items
+        SET 
+            item_name = @itemName, 
+            price = @price, 
+            stock = @stock, 
+            category = @category
+        WHERE items_id = @id";
+
+            using (MySqlConnection connection = new MySqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+
+                    using (MySqlCommand command = new MySqlCommand(updateQuery, connection))
+                    {
+                        // Подставляем параметры в запрос
+                        command.Parameters.AddWithValue("@id", id);
+                        command.Parameters.AddWithValue("@itemName", itemName);
+                        command.Parameters.AddWithValue("@price", price);
+                        command.Parameters.AddWithValue("@stock", stock);
+                        command.Parameters.AddWithValue("@category", category);
+
+                        // Выполняем команду
+                        int rowsAffected = command.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            MessageBox.Show("Запись успешно обновлена.", "Успех", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            LoadData(); // Перезагружаем данные
+                        }
+                        else
+                        {
+                            MessageBox.Show("Не удалось обновить запись.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Ошибка: " + ex.Message, "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void dataGridView1_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0) // Проверяем, что клик был по строке, а не по заголовку
+            {
+                DataGridViewRow row = dataGridView1.Rows[e.RowIndex];
+
+                // Заполняем текстовые поля данными из выбранной строки
+                textBoxItem.Text = row.Cells["item_name"].Value.ToString();
+                textBoxPrice.Text = row.Cells["price"].Value.ToString();
+                textBoxStock.Text = row.Cells["stock"].Value.ToString();
+                textBoxCategory.Text = row.Cells["category"].Value.ToString();
+            }
+        }
+
+        private void button_Edit_Click(object sender, EventArgs e)
+        {
+            this.Width = 820;  // Установить ширину
+            this.Height = 429; // Установить высоту 820; 429
+        }
+    }
+}

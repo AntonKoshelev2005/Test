@@ -1,0 +1,49 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace Example
+{
+    public partial class Main : Form
+    {
+        public Main()
+        {
+            InitializeComponent();
+        }
+
+        private void button_Items_Click(object sender, EventArgs e)
+        {
+            Items items = new Items();
+            this.Visible = false;
+            items.ShowDialog();
+            this.Visible = true;
+        }
+
+        private void button_Clients_Click(object sender, EventArgs e)
+        {
+            Clients clients = new Clients();
+            this.Visible = false;
+            clients.ShowDialog();
+            this.Visible = true;
+        }
+
+        private void button_Sale_Click(object sender, EventArgs e)
+        {
+            Sales sales = new Sales();
+            this.Visible = false;
+            sales.ShowDialog();
+            this.Visible = true;
+        }
+
+        private void Main_Load(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
